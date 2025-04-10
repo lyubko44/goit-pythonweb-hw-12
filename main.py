@@ -43,6 +43,10 @@ async def startup_event():
 
 @app.post("/contacts/", response_model=ContactResponse)
 def create_contact(contact: ContactCreate, db: Session = Depends(get_db)):
+    existing_contact = db.query(Contact).filter(Contact.email == contact.email).first()
+    if existing_contact:
+        raise HTTPException(status_code=400, detail="A contact with this email already exists")
+
     db_contact = Contact(**contact.dict())
     db.add(db_contact)
     db.commit()
