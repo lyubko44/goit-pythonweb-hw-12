@@ -4,11 +4,13 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import extract, or_, and_
 
 from .database import SessionLocal, init_db
 from .models import Contact
 
 app = FastAPI()
+
 
 def get_db():
     db = SessionLocal()
@@ -16,6 +18,7 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 class ContactCreate(BaseModel):
     first_name: str
@@ -25,15 +28,18 @@ class ContactCreate(BaseModel):
     birthday: Optional[date] = None
     additional_info: Optional[str] = None
 
+
 class ContactResponse(ContactCreate):
     id: int
 
     class Config:
         orm_mode = True
 
+
 @app.on_event("startup")
 async def startup_event():
     init_db()
+
 
 @app.post("/contacts/", response_model=ContactResponse)
 def create_contact(contact: ContactCreate, db: Session = Depends(get_db)):
@@ -43,10 +49,12 @@ def create_contact(contact: ContactCreate, db: Session = Depends(get_db)):
     db.refresh(db_contact)
     return db_contact
 
+
 @app.get("/contacts/", response_model=List[ContactResponse])
 def read_contacts(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     contacts = db.query(Contact).offset(skip).limit(limit).all()
     return contacts
+
 
 @app.get("/contacts/{contact_id}", response_model=ContactResponse)
 def read_contact(contact_id: int, db: Session = Depends(get_db)):
@@ -54,6 +62,7 @@ def read_contact(contact_id: int, db: Session = Depends(get_db)):
     if contact is None:
         raise HTTPException(status_code=404, detail="Contact not found")
     return contact
+
 
 @app.put("/contacts/{contact_id}", response_model=ContactResponse)
 def update_contact(contact_id: int, contact: ContactCreate, db: Session = Depends(get_db)):
@@ -66,6 +75,7 @@ def update_contact(contact_id: int, contact: ContactCreate, db: Session = Depend
     db.refresh(db_contact)
     return db_contact
 
+
 @app.delete("/contacts/{contact_id}")
 def delete_contact(contact_id: int, db: Session = Depends(get_db)):
     db_contact = db.query(Contact).filter(Contact.id == contact_id).first()
@@ -75,12 +85,13 @@ def delete_contact(contact_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"detail": "Contact deleted"}
 
+
 @app.get("/contacts/search/", response_model=List[ContactResponse])
 def search_contacts(
-    first_name: Optional[str] = None,
-    last_name: Optional[str] = None,
-    email: Optional[str] = None,
-    db: Session = Depends(get_db)
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+        email: Optional[str] = None,
+        db: Session = Depends(get_db)
 ):
     query = db.query(Contact)
     if first_name:
@@ -92,9 +103,22 @@ def search_contacts(
     contacts = query.all()
     return contacts
 
+
 @app.get("/contacts/upcoming_birthdays/", response_model=List[ContactResponse])
 def get_upcoming_birthdays(db: Session = Depends(get_db)):
     today = date.today()
     next_week = today + timedelta(days=7)
-    contacts = db.query(Contact).filter(Contact.birthday.between(today, next_week)).all()
+
+    contacts = db.query(Contact).filter(
+        or_(
+            and_(
+                extract('month', Contact.birthday) == today.month,
+                extract('day', Contact.birthday) >= today.day
+            ),
+            and_(
+                extract('month', Contact.birthday) == next_week.month,
+                extract('day', Contact.birthday) <= next_week.day
+            )
+        )
+    ).all()
     return contacts
