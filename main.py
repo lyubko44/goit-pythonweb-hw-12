@@ -60,11 +60,7 @@ def create_contact(
         db: Session = Depends(get_db),
         current_user: str = Depends(get_current_user)
 ):
-    existing_contact = db.query(Contact).filter(Contact.email == contact.email).first()
-    if existing_contact:
-        raise HTTPException(status_code=400, detail="A contact with this email already exists")
-
-    db_contact = Contact(**contact.dict())
+    db_contact = Contact(**contact.dict(), user_id=current_user)
     db.add(db_contact)
     db.commit()
     db.refresh(db_contact)
@@ -78,7 +74,7 @@ def read_contacts(
         db: Session = Depends(get_db),
         current_user: str = Depends(get_current_user)
 ):
-    contacts = db.query(Contact).offset(skip).limit(limit).all()
+    contacts = db.query(Contact).filter(Contact.user_id == current_user).offset(skip).limit(limit).all()
     return contacts
 
 
@@ -88,7 +84,7 @@ def read_contact(
         db: Session = Depends(get_db),
         current_user: str = Depends(get_current_user)
 ):
-    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    contact = db.query(Contact).filter(Contact.id == contact_id, Contact.user_id == current_user).first()
     if contact is None:
         raise HTTPException(status_code=404, detail="Contact not found")
     return contact
@@ -101,7 +97,7 @@ def update_contact(
         db: Session = Depends(get_db),
         current_user: str = Depends(get_current_user)
 ):
-    db_contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    db_contact = db.query(Contact).filter(Contact.id == contact_id, Contact.user_id == current_user).first()
     if db_contact is None:
         raise HTTPException(status_code=404, detail="Contact not found")
     for key, value in contact.dict().items():
@@ -117,7 +113,7 @@ def delete_contact(
         db: Session = Depends(get_db),
         current_user: str = Depends(get_current_user)
 ):
-    db_contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    db_contact = db.query(Contact).filter(Contact.id == contact_id, Contact.user_id == current_user).first()
     if db_contact is None:
         raise HTTPException(status_code=404, detail="Contact not found")
     db.delete(db_contact)
