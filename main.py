@@ -6,8 +6,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import extract, or_, and_
 
-from .database import SessionLocal, init_db
-from .models import Contact
+from auth import decode_access_token, oauth2_scheme
+from database import SessionLocal, init_db
+from models import Contact
 
 app = FastAPI()
 
@@ -41,8 +42,24 @@ async def startup_event():
     init_db()
 
 
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    payload = decode_access_token(token)
+    username = payload.get("sub")
+    if username is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return username
+
+
 @app.post("/contacts/", response_model=ContactResponse)
-def create_contact(contact: ContactCreate, db: Session = Depends(get_db)):
+def create_contact(
+        contact: ContactCreate,
+        db: Session = Depends(get_db),
+        current_user: str = Depends(get_current_user)
+):
     existing_contact = db.query(Contact).filter(Contact.email == contact.email).first()
     if existing_contact:
         raise HTTPException(status_code=400, detail="A contact with this email already exists")
@@ -55,13 +72,22 @@ def create_contact(contact: ContactCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/contacts/", response_model=List[ContactResponse])
-def read_contacts(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+def read_contacts(
+        skip: int = 0,
+        limit: int = 10,
+        db: Session = Depends(get_db),
+        current_user: str = Depends(get_current_user)
+):
     contacts = db.query(Contact).offset(skip).limit(limit).all()
     return contacts
 
 
 @app.get("/contacts/{contact_id}", response_model=ContactResponse)
-def read_contact(contact_id: int, db: Session = Depends(get_db)):
+def read_contact(
+        contact_id: int,
+        db: Session = Depends(get_db),
+        current_user: str = Depends(get_current_user)
+):
     contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if contact is None:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -69,7 +95,12 @@ def read_contact(contact_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/contacts/{contact_id}", response_model=ContactResponse)
-def update_contact(contact_id: int, contact: ContactCreate, db: Session = Depends(get_db)):
+def update_contact(
+        contact_id: int,
+        contact: ContactCreate,
+        db: Session = Depends(get_db),
+        current_user: str = Depends(get_current_user)
+):
     db_contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if db_contact is None:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -81,7 +112,11 @@ def update_contact(contact_id: int, contact: ContactCreate, db: Session = Depend
 
 
 @app.delete("/contacts/{contact_id}")
-def delete_contact(contact_id: int, db: Session = Depends(get_db)):
+def delete_contact(
+        contact_id: int,
+        db: Session = Depends(get_db),
+        current_user: str = Depends(get_current_user)
+):
     db_contact = db.query(Contact).filter(Contact.id == contact_id).first()
     if db_contact is None:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -95,7 +130,8 @@ def search_contacts(
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
         email: Optional[str] = None,
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        current_user: str = Depends(get_current_user)
 ):
     query = db.query(Contact)
     if first_name:
@@ -109,7 +145,10 @@ def search_contacts(
 
 
 @app.get("/contacts/upcoming_birthdays/", response_model=List[ContactResponse])
-def get_upcoming_birthdays(db: Session = Depends(get_db)):
+def get_upcoming_birthdays(
+        db: Session = Depends(get_db),
+        current_user: str = Depends(get_current_user)
+):
     today = date.today()
     next_week = today + timedelta(days=7)
 
