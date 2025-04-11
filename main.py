@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from fastapi import FastAPI, Depends, Request
 from fastapi import HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from slowapi import Limiter
@@ -16,6 +17,15 @@ from database import SessionLocal, init_db
 from models import Contact
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
