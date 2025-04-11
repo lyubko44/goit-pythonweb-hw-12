@@ -1,8 +1,13 @@
 from datetime import date, timedelta
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, Depends, Request
+from fastapi import HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import extract, or_, and_
 
@@ -11,6 +16,23 @@ from database import SessionLocal, init_db
 from models import Contact
 
 app = FastAPI()
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Rate limit exceeded. Try again later."},
+    )
+
+
+@app.get("/users/me")
+@limiter.limit("5/minute")  # Limit to 5 requests per minute
+def read_users_me(current_user: str = Depends(get_current_user)):
+    return {"username": current_user}
 
 
 def get_db():
