@@ -1,6 +1,8 @@
-from pydantic import BaseModel
 from datetime import date
 from typing import Optional
+
+from pydantic import BaseModel, EmailStr
+
 
 class ContactCreate(BaseModel):
     first_name: str
@@ -12,5 +14,16 @@ class ContactCreate(BaseModel):
 
 class ContactResponse(ContactCreate):
     id: int
+    class Config:
+        orm_mode = True
+
+class UserCreate(BaseModel):
+    username: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    username: EmailStr
+
     class Config:
         orm_mode = True
