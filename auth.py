@@ -1,12 +1,15 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import HTTPException, status, Depends
+from fastapi import Depends
+from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy.orm import Session
 
 from config import SECRET_KEY
+from models import User
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -14,6 +17,13 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+def authenticate_user(username: str, password: str, db: Session):
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not verify_password(password, user.hashed_password):
+        return None
+    return user
 
 
 def verify_password(plain_password, hashed_password):
