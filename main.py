@@ -30,26 +30,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize the database
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-
-
-# Rate limiting middleware
-@app.exception_handler(RateLimitExceeded)
-def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
-    return JSONResponse(
-        status_code=429,
-        content={"detail": "Rate limit exceeded. Try again later."},
-    )
-
-
-# Rate limit for the entire application
-@app.get("/users/me")
-@limiter.limit("5/minute")  # Limit to 5 requests per minute
-def read_users_me(current_user: str = Depends(get_current_user)):
-    return {"username": current_user}
-
 
 def get_db():
     db = SessionLocal()
@@ -90,6 +70,27 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
             headers={"WWW-Authenticate": "Bearer"},
         )
     return username
+
+
+# Initialize the database
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+
+# Rate limiting middleware
+@app.exception_handler(RateLimitExceeded)
+def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Rate limit exceeded. Try again later."},
+    )
+
+
+# Rate limit for the entire application
+@app.get("/users/me")
+@limiter.limit("5/minute")  # Limit to 5 requests per minute
+def read_users_me(current_user: str = Depends(get_current_user)):
+    return {"username": current_user}
 
 
 @app.post("/contacts/", response_model=ContactResponse)
