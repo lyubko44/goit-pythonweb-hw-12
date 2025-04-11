@@ -1,7 +1,10 @@
 from datetime import date, timedelta
 from typing import List, Optional
 
+import cloudinary
+import cloudinary.uploader
 from fastapi import FastAPI, Depends, Request
+from fastapi import File, UploadFile
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -27,10 +30,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize the database
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 
 
+# Rate limiting middleware
 @app.exception_handler(RateLimitExceeded)
 def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
@@ -39,6 +44,7 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     )
 
 
+# Rate limit for the entire application
 @app.get("/users/me")
 @limiter.limit("5/minute")  # Limit to 5 requests per minute
 def read_users_me(current_user: str = Depends(get_current_user)):
@@ -193,3 +199,31 @@ def get_upcoming_birthdays(
         )
     ).all()
     return contacts
+
+
+# Configure Cloudinary
+cloudinary.config(
+    cloud_name="your_cloud_name",
+    api_key="your_api_key",
+    api_secret="your_api_secret"
+)
+
+
+@app.put("/users/me/avatar")
+def update_avatar(
+        file: UploadFile = File(...),
+        current_user: str = Depends(get_current_user)
+):
+    # Upload the file to Cloudinary
+    try:
+        result = cloudinary.uploader.upload(
+            file.file,
+            folder="user_avatars",
+            public_id=f"user_{current_user}_avatar",
+            overwrite=True,
+            resource_type="image"
+        )
+        avatar_url = result.get("secure_url")
+        return {"avatar_url": avatar_url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to upload avatar")

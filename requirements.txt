@@ -3,4 +3,6 @@ SQLAlchemy==2.0.40
 pydantic==2.11.2
 python-dotenv==1.1.0
 slowapi==0.1.7
-python-jose==3.3.0
+python-jose~=3.4.0
+passlib~=1.7.4
+cloudinary~=1.44.0
