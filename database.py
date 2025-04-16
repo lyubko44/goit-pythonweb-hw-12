@@ -17,10 +17,19 @@ Base = declarative_base()
 
 
 def init_db():
+    """
+    Initializes the database by creating all tables defined in the models.
+    """
     Base.metadata.create_all(bind=engine)
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[SessionLocal, None, None]:
+    """
+    Provides a database session generator.
+
+    Yields:
+        SessionLocal: A database session.
+    """
     db = SessionLocal()
     try:
         yield db

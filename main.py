@@ -26,6 +26,16 @@ app.state.limiter = limiter
 
 @app.exception_handler(RateLimitExceeded)
 def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    """
+    Handles rate limit exceeded exceptions.
+
+    Args:
+        request (Request): The incoming HTTP request.
+        exc (RateLimitExceeded): The exception raised when the rate limit is exceeded.
+
+    Returns:
+        JSONResponse: A response with a 429 status code and an error message.
+    """
     return JSONResponse(
         status_code=429,
         content={"detail": "Rate limit exceeded. Try again later."},
@@ -34,6 +44,9 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
 
 @app.on_event("startup")
 async def on_startup():
+    """
+    Initializes the database on application startup.
+    """
     init_db()
 
 

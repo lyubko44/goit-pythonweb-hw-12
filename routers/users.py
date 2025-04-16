@@ -18,6 +18,16 @@ router = APIRouter(
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    """
+    Registers a new user.
+
+    Args:
+        user (UserCreate): The user data to register.
+        db (Session): The database session.
+
+    Returns:
+        UserResponse: The registered user.
+    """
     existing_user = db.query(User).filter(User.username == user.username).first()
     if existing_user:
         raise HTTPException(
@@ -38,6 +48,16 @@ def login_for_access_token(
         form_data: OAuth2PasswordRequestForm = Depends(),
         db: Session = Depends(get_db)
 ):
+    """
+    Authenticates a user and generates an access token.
+
+    Args:
+        form_data (OAuth2PasswordRequestForm): The login form data.
+        db (Session): The database session.
+
+    Returns:
+        dict: The access token and token type.
+    """
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(
@@ -57,11 +77,30 @@ def login_for_access_token(
 
 @router.get("/me")
 def read_current_user(current_user: str = Depends(get_current_user)):
+    """
+    Retrieves the current authenticated user.
+
+    Args:
+        current_user (str): The current authenticated user.
+
+    Returns:
+        dict: The username of the current user.
+    """
     return {"username": current_user}
 
 
 @router.put("/me/avatar")
 def update_avatar(file: UploadFile = File(...), current_user: str = Depends(get_current_user)):
+    """
+    Updates the avatar of the current user.
+
+    Args:
+        file (UploadFile): The uploaded avatar file.
+        current_user (str): The current authenticated user.
+
+    Returns:
+        dict: The URL of the uploaded avatar.
+    """
     try:
         result = cloudinary.uploader.upload(
             file.file,
