@@ -12,14 +12,18 @@ class ContactCreate(BaseModel):
     birthday: Optional[date] = None
     additional_info: Optional[str] = None
 
+
 class ContactResponse(ContactCreate):
     id: int
+
     class Config:
         orm_mode = True
+
 
 class UserCreate(BaseModel):
     username: EmailStr
     password: str
+
 
 class UserResponse(BaseModel):
     id: int
@@ -29,3 +33,12 @@ class UserResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str

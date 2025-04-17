@@ -6,7 +6,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from database import init_db
-from routers import contacts, users
+from routers import contacts, users, password_reset
 
 app = FastAPI()
 
@@ -22,7 +22,7 @@ app.add_middleware(
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
-
+app.include_router(password_reset.router)
 
 @app.exception_handler(RateLimitExceeded)
 def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
