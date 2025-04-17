@@ -36,4 +36,6 @@ def test_read_current_user():
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
-    assert response.json()["username"] == "testuser"
+    data = response.json()
+    assert data["username"] == "testuser"
+    assert "email" in data

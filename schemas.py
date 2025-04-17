@@ -23,7 +23,9 @@ class UserCreate(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
-    username: EmailStr
+    username: str
+    email: Optional[str] = None
+    avatar_url: Optional[str] = None
 
     class Config:
         orm_mode = True

@@ -75,40 +75,37 @@ def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.get("/me")
-def read_current_user(current_user: str = Depends(get_current_user)):
+@router.get("/me", response_model=UserResponse)
+def read_current_user(current_user: User = Depends(get_current_user)):
     """
-    Retrieves the current authenticated user.
+    Retrieve the currently authenticated user.
 
     Args:
-        current_user (str): The current authenticated user.
+        current_user (User): The authenticated user object.
 
     Returns:
-        dict: The username of the current user.
+        UserResponse: The details of the authenticated user.
     """
-    return {"username": current_user}
+    return current_user
 
 
 @router.put("/me/avatar")
-def update_avatar(file: UploadFile = File(...), current_user: str = Depends(get_current_user)):
+def update_avatar(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
     """
-    Updates the avatar of the current user.
+        Update the avatar of the currently authenticated user.
 
-    Args:
-        file (UploadFile): The uploaded avatar file.
-        current_user (str): The current authenticated user.
+        Args:
+            file (UploadFile): The uploaded avatar file.
+            current_user (User): The authenticated user object.
 
-    Returns:
-        dict: The URL of the uploaded avatar.
-    """
-    try:
-        result = cloudinary.uploader.upload(
-            file.file,
-            folder="user_avatars",
-            public_id=f"user_{current_user}_avatar",
-            overwrite=True,
-            resource_type="image"
-        )
-        return {"avatar_url": result.get("secure_url")}
-    except Exception:
-        raise HTTPException(status_code=500, detail="Failed to upload avatar")
+        Returns:
+            dict: A dictionary containing the URL of the uploaded avatar.
+        """
+    result = cloudinary.uploader.upload(
+        file.file,
+        folder="user_avatars",
+        public_id=f"user_{current_user.username}_avatar",
+        overwrite=True,
+        resource_type="image"
+    )
+    return {"avatar_url": result.get("secure_url")}

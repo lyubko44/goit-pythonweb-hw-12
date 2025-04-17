@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from schemas import ContactCreate, UserCreate, ContactResponse
+from schemas import ContactCreate, UserCreate, ContactResponse, UserResponse
 
 
 def test_contact_create_schema():
@@ -63,3 +63,14 @@ def test_contact_response_schema():
     assert contact_response.id == 1
     assert contact_response.first_name == "John"
     assert contact_response.email == "john.doe@example.com"
+
+
+def test_user_response_schema():
+    data = {
+        "id": 1,
+        "username": "testuser",
+        "email": "test@example.com"
+    }
+    user = UserResponse(**data)
+    assert user.username == "testuser"
+    assert user.email == "test@example.com"

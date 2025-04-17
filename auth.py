@@ -8,7 +8,9 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
+from cache import get_cached_user, set_cached_user
 from config import SECRET_KEY
+from database import get_db
 from models import User
 
 ALGORITHM = "HS256"
@@ -57,13 +59,25 @@ def decode_access_token(token: str):
         )
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     payload = decode_access_token(token)
     username = payload.get("sub")
     if not username:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return username
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+    cached_user = get_cached_user(username)
+    if cached_user:
+        return User(**cached_user)
+
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+    user_dict = {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        # інші поля
+    }
+    set_cached_user(username, user_dict)
+    return user
