@@ -1,13 +1,14 @@
 from datetime import timedelta
 
+import cloudinary.uploader
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-import cloudinary.uploader
 
-from auth import get_current_user, get_password_hash, authenticate_user, create_access_token
+from auth import get_current_user, get_password_hash, authenticate_user, create_access_token, \
+    ACCESS_TOKEN_EXPIRE_MINUTES
 from database import get_db
-from models import User
+from models import User, UserRole
 from schemas import UserCreate, UserResponse
 
 router = APIRouter(
@@ -15,8 +16,9 @@ router = APIRouter(
     tags=["users"]
 )
 
+router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     """
     Registers a new user.
@@ -32,11 +34,15 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="User with this email already exists"
+            detail="User with this username already exists"  # Updated message
         )
 
     hashed_password = get_password_hash(user.password)
-    new_user = User(username=user.username, hashed_password=hashed_password)
+    new_user = User(
+        username=user.username,
+        hashed_password=hashed_password,
+        role=UserRole.user
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -66,7 +72,7 @@ def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token_expires = timedelta(minutes=30)  # or ACCESS_TOKEN_EXPIRE_MINUTES
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)  # Use env variable
     access_token = create_access_token(
         data={"sub": user.username},
         expires_delta=access_token_expires
@@ -90,17 +96,17 @@ def read_current_user(current_user: User = Depends(get_current_user)):
 
 
 @router.put("/me/avatar")
-def update_avatar(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+def update_avatar(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):  # Allow all users
     """
-        Update the avatar of the currently authenticated user.
+    Update the avatar of the currently authenticated user.
 
-        Args:
-            file (UploadFile): The uploaded avatar file.
-            current_user (User): The authenticated user object.
+    Args:
+        file (UploadFile): The uploaded avatar file.
+        current_user (User): The authenticated user object.
 
-        Returns:
-            dict: A dictionary containing the URL of the uploaded avatar.
-        """
+    Returns:
+        dict: A dictionary containing the URL of the uploaded avatar.
+    """
     result = cloudinary.uploader.upload(
         file.file,
         folder="user_avatars",

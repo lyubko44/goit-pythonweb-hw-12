@@ -2,6 +2,7 @@ from datetime import date
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr
+from sqlalchemy import Enum
 
 
 class ContactCreate(BaseModel):
@@ -25,11 +26,17 @@ class UserCreate(BaseModel):
     password: str
 
 
+class UserRole(str, Enum):
+    user = "user"
+    admin = "admin"
+
+
 class UserResponse(BaseModel):
     id: int
     username: str
     email: Optional[str] = None
     avatar_url: Optional[str] = None
+    role: UserRole
 
     class Config:
         orm_mode = True
